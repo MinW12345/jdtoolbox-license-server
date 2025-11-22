@@ -1,0 +1,11 @@
+services:
+  - type: web
+    name: jdtoolbox-license
+    env: python
+    region: singapore
+    plan: free
+    buildCommand: "pip install -r requirements.txt"
+    startCommand: "python auth_server.py"
+    envVars:
+      - key: PORT
+        value: 10000
