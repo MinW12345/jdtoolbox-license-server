@@ -1,112 +1,83 @@
-# auth_server.py
-from flask import Flask, request, jsonify
 import os
-import time
-import requests
 import logging
+from flask import Flask, request, jsonify
+import requests
 
-# 设置日志
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
-app = Flask(__name__)
+SUPABASE_URL = os.getenv("SUPABASE_URL")
+SUPABASE_KEY = os.getenv("SUPABASE_ANON_KEY")
 
-# ====== 配置 ======
-SUPABASE_URL = os.getenv("SUPABASE_URL", "https://nhrsuhsvptcovenvwoxi.supabase.co")
-SUPABASE_KEY = os.getenv("eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im5ocnN1aHN2cHRjb3ZlbnZ3b3hpIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjM3OTg2NDQsImV4cCI6MjA3OTM3NDY0NH0.I5UeFdwPAnWvYhONmLc8xcQbMKQyDkSVvxAl1CZ60eg")
-
-
-WHITELIST = {
-    "QWEEE1": 1893456000,
-    "QWEEE2": 1893456000,
-    "QWEEE3": 1893456000,
-    "QWEEE4": 1893456000,
-    "QWEEE5": 1893456000,
-}
+if not SUPABASE_URL or not SUPABASE_KEY:
+    logger.error("❌ 缺少 SUPABASE_URL 或 SUPABASE_ANON_KEY")
+    raise EnvironmentError("请在 Render 设置环境变量")
 
 HEADERS = {
     "apikey": SUPABASE_KEY,
     "Authorization": f"Bearer {SUPABASE_KEY}",
-    "Content-Type": "application/json",
-    "Prefer": "return=minimal"
+    "Content-Type": "application/json"
 }
 
-def is_activated(license_key):
-    """检查授权码是否已在 Supabase 中激活"""
+app = Flask(__name__)
+
+def is_valid_license(license_key):
+    """检查 license 是否在 licenses 表中"""
+    url = f"{SUPABASE_URL}/rest/v1/licenses"
+    params = {"license_key": f"eq.{license_key}"}
+    try:
+        res = requests.get(url, headers=HEADERS, params=params, timeout=10)
+        return res.status_code == 200 and len(res.json()) > 0
+    except Exception as e:
+        logger.error(f"验证 license 异常: {e}")
+        return False
+
+def is_already_activated(license_key):
+    """检查是否已激活"""
     url = f"{SUPABASE_URL}/rest/v1/activations"
     params = {"license": f"eq.{license_key}"}
     try:
-        res = requests.get(url, headers=HEADERS, params=params, timeout=5)
-        if res.status_code == 200:
-            data = res.json()
-            return len(data) > 0
-        else:
-            logger.error(f"Supabase 查询失败: {res.status_code} {res.text}")
-            return False
+        res = requests.get(url, headers=HEADERS, params=params, timeout=10)
+        return res.status_code == 200 and len(res.json()) > 0
     except Exception as e:
-        logger.error(f"Supabase 查询异常: {e}")
+        logger.error(f"查询激活记录异常: {e}")
         return False
 
 def record_activation(license_key, machine_id):
-    """将激活记录写入 Supabase"""
+    """记录激活"""
     url = f"{SUPABASE_URL}/rest/v1/activations"
-    payload = {
-        "license": license_key,
-        "machine_id": machine_id
-    }
+    payload = {"license": license_key, "machine_id": machine_id}
     try:
-        res = requests.post(url, json=payload, headers=HEADERS, timeout=5)
-        if res.status_code in (200, 201):
-            return True
-        else:
-            logger.error(f"Supabase 写入失败: {res.status_code} {res.text}")
-            return False
+        res = requests.post(url, json=payload, headers=HEADERS, timeout=10)
+        return res.status_code in (200, 201)
     except Exception as e:
-        logger.error(f"Supabase 写入异常: {e}")
+        logger.error(f"记录激活失败: {e}")
         return False
-
-# ====== 路由 ======
-@app.route('/health')
-def health():
-    return jsonify(status="ok")
 
 @app.route('/activate', methods=['POST'])
 def activate():
-    try:
-        data = request.get_json()
-        if not data:
-            return jsonify(ok=False, msg="无效的 JSON 格式"), 400
+    data = request.get_json()
+    if not data or 'license' not in data or 'machine_id' not in data:
+        return jsonify({"ok": False, "msg": "缺少 license 或 machine_id"}), 400
 
-        license_key = data.get('license')
-        machine_id = data.get('machine_id', 'unknown')
+    license_key = data['license']
+    machine_id = data['machine_id']
 
-        if not license_key:
-            return jsonify(ok=False, msg="缺少授权码字段"), 400
+    if not is_valid_license(license_key):
+        return jsonify({"ok": False, "msg": "无效的授权码"}), 400
 
-        # 1. 检查是否在白名单
-        expire_ts = WHITELIST.get(license_key)
-        if expire_ts is None:
-            return jsonify(ok=False, msg="无效授权码"), 400
+    if is_already_activated(license_key):
+        return jsonify({"ok": False, "msg": "该授权码已被使用"}), 403
 
-        if time.time() > expire_ts:
-            return jsonify(ok=False, msg="授权已过期"), 400
+    if record_activation(license_key, machine_id):
+        return jsonify({"ok": True, "msg": "激活成功！"})
+    else:
+        return jsonify({"ok": False, "msg": "数据库写入失败"}), 500
 
-        # 2. 检查是否已激活（查 Supabase）
-        if is_activated(license_key):
-            return jsonify(ok=False, msg="该授权码已被使用"), 400
+@app.route('/')
+def home():
+    return jsonify({"status": "License server is running"})
 
-        # 3. 记录激活
-        if not record_activation(license_key, machine_id):
-            return jsonify(ok=False, msg="激活失败（数据库错误）"), 500
-
-        logger.info(f"✅ 激活成功: {license_key} on {machine_id}")
-        return jsonify(ok=True, msg="激活成功！")
-
-    except Exception as e:
-        logger.exception("服务器内部错误")
-        return jsonify(ok=False, msg=f"服务器错误: {str(e)}"), 500
-
-# ====== 启动 ======
 if __name__ == '__main__':
-    port = int(os.environ.get("PORT", 10000))
+    port = int(os.environ.get('PORT', 10000))
     app.run(host='0.0.0.0', port=port)
