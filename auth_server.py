@@ -10,11 +10,11 @@ app = Flask(__name__)
 # 注意：这些码是否已被使用，最终以 Supabase 为准（启动时可同步）
 INITIAL_LICENSES = {
     "TEST-12345": {"expire": 2000000000},
-    "QWEEE1": {"expire": 1893456000},
-    "QWEEE2": {"expire": 1893456000},
-    "QWEEE3": {"expire": 1893456000},
-    "QWEEE4": {"expire": 1893456000},
-    "QWEEE5": {"expire": 1893456000},
+    "TEST-12347": {"expire": 1893456000},
+    "TEST-12346": {"expire": 1893456000},
+    "TEST-12348": {"expire": 1893456000},
+    "TEST-12349": {"expire": 1893456000},
+    "TEST-12344": {"expire": 1893456000},
 }
 
 # ====== Supabase 配置 ======
