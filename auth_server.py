@@ -12,8 +12,10 @@ logger = logging.getLogger(__name__)
 app = Flask(__name__)
 
 # ====== 配置 ======
-SUPABASE_URL = os.getenv("SUPABASE_URL", "https://你的项目.supabase.co")
-SUPABASE_KEY = os.getenv("SUPABASE_ANON_KEY", "你的 anon key")
+SUPABASE_URL = os.getenv("SUPABASE_URL", "https://nhrsuhsvptcovenvwoxi.supabase.co")
+SUPABASE_KEY = os.getenv("eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im5ocnN1aHN2cHRjb3ZlbnZ3b3hpIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjM3OTg2NDQsImV4cCI6MjA3OTM3NDY0NH0.I5UeFdwPAnWvYhONmLc8xcQbMKQyDkSVvxAl1CZ60eg")
+
+
 WHITELIST = {
     "QWEEE1": 1893456000,
     "QWEEE2": 1893456000,
