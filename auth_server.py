@@ -8,6 +8,10 @@ app = Flask(__name__)
 LICENSES = {
     "TEST-12345": {"used": False, "expire": 2000000000},  # 永不过期
     "JD-TOOLBOX": {"used": False, "expire": 1893456000},  # 2030年过期
+    "JD-TOOLBOX01": {"used": False, "expire": 1893456000},  # 2030年过期
+    "JD-TOOLBOX02": {"used": False, "expire": 1893456000},  # 2030年过期
+    "JD-TOOLBOX03": {"used": False, "expire": 1893456000},  # 2030年过期
+    "JD-TOOLBOX04": {"used": False, "expire": 1893456000},  # 2030年过期
 }
 
 @app.route('/activate', methods=['POST'])
